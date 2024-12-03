@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "bundle": "npx esbuild src/sheets/functions.ts --bundle --global-name=logic --outfile=dist/bundle.js --format=iife"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "esbuild": "^0.24.0",
+    "lodash": "^4.17.21",
+    "rrule": "^2.8.1"
+  }
+}
