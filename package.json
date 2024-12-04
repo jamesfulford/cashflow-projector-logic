@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "bundle": "npx esbuild src/sheets/functions.ts --bundle --global-name=logic --outfile=dist/bundle.js --format=iife"
+    "bundle": "npx esbuild src/sheets/functions.ts --bundle --global-name=logic --outfile=dist/bundle.js --format=iife",
+    "test": "bun test"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
