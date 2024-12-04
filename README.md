@@ -15,6 +15,14 @@ In a Google Sheet,
 3. Paste `src/sheets/stubs.gs` into a new file called `stubs.gs`.
 4. Use your new functions!
 
+## Running Tests
+
+To run the tests, use the following command:
+
+```bash
+npm test
+```
+
 ## Concepts
 
 A **transaction** is a payment that happens on a particular day. For example, paying $2100 (value) for rent (name) on Jan 1st 2025 (day).
