@@ -2,6 +2,7 @@ import { RRuleSet, rrulestr } from "rrule";
 import { IApiRule, IParameters, RuleType } from "../interfaces";
 import { fromDateToString } from "../rrule";
 import { computeTransactions } from "../transactions";
+import { Candle, computeCandles } from "../candles";
 
 export type RuleRow = [string, string, number];
 export type TransactionRow = [string, string, number, number, number];
@@ -68,6 +69,27 @@ export function INTERPRET_RRULES(rrulestrings: string[], startDate: Date) {
       return e.toString();
     }
   });
+}
+
+export function GROUP_TO_CANDLES(
+  days: Date[],
+  values: number[],
+  groupBy: "day" | "week" | "month" | "quarter" | "year",
+  startDate: Date,
+  endDate: Date,
+  startValue: number,
+  candleField: keyof Candle
+) {
+  if (days.length !== values.length)
+    throw new Error("Must have same number of days and values.");
+  const rows = days.map((day, i): [Date, number] => [day, values[i]]);
+
+  const candles = computeCandles(rows, groupBy, {
+    startDate,
+    endDate,
+    startValue,
+  });
+  return candles.map((c) => c[candleField]);
 }
 
 // TODO:
