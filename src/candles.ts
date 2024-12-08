@@ -20,14 +20,6 @@ export interface Candle {
   volume: number;
 }
 
-function buildCandle(values: number[]): Omit<Candle, "volume" | "date"> {
-  const open = Math.round(100 * values[0]) / 100;
-  const low = Math.round(100 * Math.min(...values)) / 100;
-  const high = Math.round(100 * Math.max(...values)) / 100;
-  const close = Math.round(100 * values[values.length - 1]) / 100;
-  return { open, low, high, close };
-}
-
 export function computeCandles(
   _rows: [Date, number][],
   groupBy: "day" | "week" | "month" | "quarter" | "year",
@@ -72,20 +64,31 @@ export function computeCandles(
   });
 
   let row_i = 0; // for traversing `rows`
+  let lastValue = parameters.startValue;
   return representativeDays.map((repDay): Candle => {
+    const open = lastValue;
+
     // Get all transactions for this day
     const todaysValues: number[] = [];
     while (row_i < rows.length && isSameGroup(rows[row_i][0], repDay)) {
-      todaysValues.push(rows[row_i][1]);
+      const value = rows[row_i][1];
+      lastValue = value;
+      todaysValues.push(value);
       row_i += 1;
     }
 
     const volume = todaysValues.length;
+    const low = Math.min(...todaysValues);
+    const high = Math.max(...todaysValues);
 
     return {
       date: repDay,
       volume,
-      ...buildCandle(todaysValues),
+
+      open,
+      close: lastValue,
+      high,
+      low,
     };
   });
 }
