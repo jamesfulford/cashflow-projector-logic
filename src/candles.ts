@@ -1,7 +1,7 @@
 import { IApiTransaction } from "./interfaces";
 import { eachDayOfInterval } from "date-fns/eachDayOfInterval";
 import { format } from "date-fns/format";
-import { fromDateToString } from "./rrule";
+import { fromDateToString, fromStringToDate } from "./rrule";
 
 interface ComputationalParameters {
   startDate: Date;
@@ -36,7 +36,7 @@ export function computeCandles(
       case "quarter":
         return format(a, "yyyy-qq") == format(b, "yyyy-qq");
       case "week":
-        return format(a, "YYYY-ww") == format(b, "YYYY-ww");
+        return format(a, "yyyy-ww") == format(b, "yyyy-ww");
       case "year":
         return format(a, "yyyy") == format(b, "yyyy");
     }
@@ -65,28 +65,35 @@ export function computeCandles(
 
   let row_i = 0; // for traversing `rows`
   let lastValue = parameters.startValue;
+
   return representativeDays.map((repDay): Candle => {
     const open = lastValue;
+    let close = lastValue;
+    let high = lastValue;
+    let low = lastValue;
 
     // Get all transactions for this day
     const todaysValues: number[] = [];
     while (row_i < rows.length && isSameGroup(rows[row_i][0], repDay)) {
       const value = rows[row_i][1];
+
       lastValue = value;
+      close = value;
+      high = Math.max(high, value);
+      low = Math.min(low, value);
+
       todaysValues.push(value);
       row_i += 1;
     }
 
     const volume = todaysValues.length;
-    const low = Math.min(...todaysValues);
-    const high = Math.max(...todaysValues);
 
     return {
       date: repDay,
       volume,
 
       open,
-      close: lastValue,
+      close,
       high,
       low,
     };

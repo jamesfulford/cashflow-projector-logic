@@ -1,6 +1,6 @@
 import { RRuleSet, rrulestr } from "rrule";
 import { IApiRule, IParameters, RuleType } from "../interfaces";
-import { fromDateToString } from "../rrule";
+import { fromDateToString, fromStringToDate } from "../rrule";
 import { computeTransactions } from "../transactions";
 import { Candle, computeCandles } from "../candles";
 
@@ -46,8 +46,8 @@ export function COMPUTE_TRANSACTIONS(
   ];
 }
 
-export function INTERPRET_RRULES(rrulestrings: string[], startDate: Date) {
-  return rrulestrings.map((rrulestring) => {
+export function INTERPRET_RRULES(rrulestrings: string[][], startDate: Date) {
+  return rrulestrings.map(([rrulestring]) => {
     try {
       const rruleset = rrulestr(rrulestring, {
         forceset: true,
@@ -72,8 +72,8 @@ export function INTERPRET_RRULES(rrulestrings: string[], startDate: Date) {
 }
 
 export function GROUP_TO_CANDLES(
-  days: Date[],
-  values: number[],
+  days: Date[][],
+  values: number[][],
   groupBy: "day" | "week" | "month" | "quarter" | "year",
   startDate: Date,
   endDate: Date,
@@ -82,14 +82,23 @@ export function GROUP_TO_CANDLES(
 ) {
   if (days.length !== values.length)
     throw new Error("Must have same number of days and values.");
-  const rows = days.map((day, i): [Date, number] => [day, values[i]]);
+  const rows = days
+    .map(([day], i): [Date | string, number] => [day, values[i][0]])
+    .filter(([day, value]) => day)
+    .map(([day, value]): [Date, number] => [
+      typeof day === "string" ? fromStringToDate(day) : day,
+      value,
+    ]);
 
   const candles = computeCandles(rows, groupBy, {
     startDate,
     endDate,
     startValue,
   });
-  return candles.map((c) => c[candleField]);
+  return [
+    [groupBy + " of", candleField],
+    ...candles.map((c) => [c.date, c[candleField]]),
+  ];
 }
 
 // TODO:
