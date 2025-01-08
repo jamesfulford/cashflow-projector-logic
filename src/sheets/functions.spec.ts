@@ -1,4 +1,10 @@
-import { COMPUTE_TRANSACTIONS, INTERPRET_RRULES, RuleRow } from "./functions";
+import {
+  APPLY_INCREASES,
+  COMPUTE_INCREASES,
+  COMPUTE_TRANSACTIONS,
+  INTERPRET_RRULES,
+  RuleRow,
+} from "./functions";
 
 describe("COMPUTE_TRANSACTIONS", () => {
   it("should compute transactions for a single rule", () => {
@@ -136,5 +142,58 @@ describe("INTERPRET_RRULE", () => {
     const result = INTERPRET_RRULES(rrules, startDate);
 
     expect(result).toEqual(["Error: Unknown RRULE property 'INVALID_RRULE'"]);
+  });
+});
+
+describe("COMPUTE_INCREASES", () => {
+  it("should compute increases", () => {
+    const days = [
+      [new Date("2024-01-01")],
+      [new Date("2024-01-02")],
+      [new Date("2024-01-03")],
+      [new Date("2024-01-04")],
+      [new Date("2024-01-05")],
+      [new Date("2024-01-06")],
+      [new Date("2024-01-07")],
+    ];
+    const values = [[2], [2], [3], [3], [3], [3.1], [3.2]];
+
+    const results = COMPUTE_INCREASES(days, values, new Date("2023, 12, 10"));
+    expect(results).toEqual([
+      ["day", "increased value", "increased difference"],
+      [new Date("2023-12-10"), 2, 0],
+      [new Date("2024-01-03"), 3, 1],
+      [new Date("2024-01-06"), 3.1, 0.1],
+      [new Date("2024-01-07"), 3.2, 0.1],
+    ]);
+  });
+});
+
+describe("APPLY_INCREASES", () => {
+  it("should apply increases", () => {
+    const days: [Date][] = [
+      [new Date("2024-01-01")],
+      [new Date("2024-01-15")],
+      [new Date("2024-02-01")],
+      [new Date("2024-02-15")],
+    ];
+    const values: [number][] = [
+      [1000],
+      [1500], // +500
+      [2100], // +600
+      [2900], // +800
+    ];
+
+    const projects: [number][] = [
+      [1100], // has to go to next increase
+      [300], // same increase is fine
+      [1200], // several increases in the future
+    ];
+
+    expect(APPLY_INCREASES(days, values, projects)).toEqual([
+      [new Date("2024-01-15"), 400],
+      [new Date("2024-01-15"), 100],
+      [new Date("2024-02-15"), 300],
+    ]);
   });
 });

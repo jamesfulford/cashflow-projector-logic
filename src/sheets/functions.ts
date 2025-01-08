@@ -1,4 +1,4 @@
-import { RRuleSet, rrulestr } from "rrule";
+import { RRule, RRuleSet, rrulestr } from "rrule";
 import { IApiRule, IParameters, RuleType } from "../interfaces";
 import { fromDateToString, fromStringToDate } from "../rrule";
 import { computeTransactions } from "../transactions";
@@ -47,11 +47,8 @@ export function COMPUTE_TRANSACTIONS(
 }
 
 export function INTERPRET_RRULES(rrulestrings: string[][], startDate: Date) {
-  return rrulestrings.map(([rrulestring]) => {
+  function getPlayoutInfo(rruleset: RRuleSet) {
     try {
-      const rruleset = rrulestr(rrulestring, {
-        forceset: true,
-      }) as RRuleSet;
       const last = rruleset.before(startDate);
       const next = rruleset.after(startDate, true);
       if (last && next) {
@@ -67,6 +64,16 @@ export function INTERPRET_RRULES(rrulestrings: string[][], startDate: Date) {
       }
     } catch (e) {
       return e.toString();
+    }
+  }
+  return rrulestrings.map(([rrulestring]) => {
+    try {
+      const rruleset = rrulestr(rrulestring, {
+        forceset: true,
+      }) as RRuleSet;
+      return [rruleset.rrules()[0].toText(), getPlayoutInfo(rruleset)];
+    } catch (e) {
+      return [e.toString()];
     }
   });
 }
@@ -101,9 +108,69 @@ export function GROUP_TO_CANDLES(
   ];
 }
 
+export function COMPUTE_INCREASES(
+  days: Date[][],
+  values: number[][],
+  startDate: Date
+) {
+  if (days.length !== values.length) {
+    throw new Error("must compare same number of days as values");
+  }
+  const results: [Date, number, number][] = [];
+
+  let previousValue = values[0][0];
+  results.push([startDate, previousValue, 0]);
+  days.forEach(([day], i) => {
+    const [value] = values[i];
+    if (value > previousValue) {
+      const result: [Date, number, number] = [
+        day,
+        value,
+        Math.round((value - previousValue) * 100) / 100,
+      ];
+      results.push(result);
+
+      previousValue = value;
+    }
+  });
+
+  return [["day", "increased value", "increased difference"], ...results];
+}
+
+export function APPLY_INCREASES(
+  _increaseDates: [Date][],
+  _increaseBalances: [number][],
+  _projectCosts: [number][]
+) {
+  const increaseDates = _increaseDates.filter(([d]) => d);
+  const increaseBalances = _increaseBalances.filter(([v]) => v);
+  const projectCosts = _projectCosts.filter(([v]) => v);
+  if (increaseDates.length !== increaseBalances.length) {
+    throw new Error("increaseDates and increaseBalances must have same length");
+  }
+
+  let increaseIndex = 0;
+  let balance = increaseBalances[0][0];
+  const results = projectCosts.map(([cost]) => {
+    balance -= cost;
+    while (balance < 0) {
+      // go to next increase
+      increaseIndex += 1;
+      if (increaseIndex >= increaseDates.length) {
+        // too far in the future
+        return [`after ${increaseDates[increaseDates.length - 1][0]}`, balance];
+      }
+      const increaseAmount =
+        increaseBalances[increaseIndex][0] -
+        increaseBalances[increaseIndex - 1][0];
+      balance += increaseAmount;
+    }
+    return [increaseDates[increaseIndex][0], balance];
+  });
+
+  return [["funds ready date", "remaining capital"], ...results];
+}
+
 // TODO:
-// - transactions to candles
-// - better display rrules
-// - summarize rules based on transactions
 // - display versus compute end date
 // - suggest end date
